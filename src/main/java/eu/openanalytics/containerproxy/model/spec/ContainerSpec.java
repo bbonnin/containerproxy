@@ -38,7 +38,21 @@ public class ContainerSpec {
 	private String memory;
 	private boolean privileged;
 	private Map<String, String> settings = new HashMap<>();
-	
+	private boolean proxyManaged = true;
+	private String appUrl;
+
+	public boolean isProxyManaged() {
+		return proxyManaged;
+	}
+	public void setProxyManaged(boolean proxyManaged) {
+		this.proxyManaged = proxyManaged;
+	}
+	public String getAppUrl() {
+		return appUrl;
+	}
+	public void setAppUrl(String appUrl) {
+		this.appUrl = appUrl;
+	}
 	public String getImage() {
 		return image;
 	}
@@ -133,5 +147,7 @@ public class ContainerSpec {
 			if (target.getSettings() == null) target.setSettings(new HashMap<>());
 			target.getSettings().putAll(settings);
 		}
+		target.setProxyManaged(proxyManaged);
+		target.setAppUrl(appUrl);
 	}
 }

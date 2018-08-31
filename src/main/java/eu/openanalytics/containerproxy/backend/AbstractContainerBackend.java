@@ -23,14 +23,10 @@ package eu.openanalytics.containerproxy.backend;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -90,7 +86,7 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
 	public void startProxy(Proxy proxy) throws ContainerProxyException {
 		proxy.setId(UUID.randomUUID().toString());
 		proxy.setStatus(ProxyStatus.Starting);
-		
+
 		try {
 			doStartProxy(proxy);
 		} catch (Throwable t) {
@@ -109,8 +105,23 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
 	
 	protected void doStartProxy(Proxy proxy) throws Exception {
 		for (ContainerSpec spec: proxy.getSpec().getContainerSpecs()) {
-			Container c = startContainer(spec, proxy);
-			proxy.getContainers().add(c);
+
+			Container container = null;
+
+			if (spec.isProxyManaged()) {
+				container = startContainer(spec, proxy);
+			}
+			else {
+				container = new Container();
+				container.setSpec(spec);
+				container.setId(UUID.randomUUID().toString());
+
+				String mapping = mappingStrategy.createMapping("default", container, proxy);
+				URI target = new URI(spec.getAppUrl());
+				proxy.getTargets().put(mapping, target);
+			}
+
+			proxy.getContainers().add(container);
 		}
 	}
 	

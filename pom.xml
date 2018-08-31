@@ -5,7 +5,7 @@
 
 	<groupId>eu.openanalytics</groupId>
 	<artifactId>containerproxy</artifactId>
-	<version>0.3.0</version>
+	<version>0.3.0-saagie</version>
 	<name>ContainerProxy</name>
 	<packaging>jar</packaging>
 	
@@ -231,6 +231,7 @@
 						<exclude>LICENSE_HEADER</exclude>
 						<exclude>README.md</exclude>
 						<exclude>.gitignore</exclude>
+						<exclude>.idea/**</exclude>
 					</excludes>
 				</configuration>
 			</plugin>

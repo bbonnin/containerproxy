@@ -15,3 +15,7 @@ proxy:
       cmd: ["R", "-e", "shinyproxy::run_01_hello()"]
       port-mapping:
         default: 3838
+  - id: external
+    container-specs:
+    - proxy-managed: false
+      app-url: http://localhost:8081
