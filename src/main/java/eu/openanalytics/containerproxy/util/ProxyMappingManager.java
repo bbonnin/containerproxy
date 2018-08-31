@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
+import io.undertow.server.handlers.proxy.*;
 import org.springframework.stereotype.Component;
 
 import eu.openanalytics.containerproxy.service.HeartbeatService;
@@ -35,10 +36,6 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.Cookie;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.server.handlers.ResponseCodeHandler;
-import io.undertow.server.handlers.proxy.LoadBalancingProxyClient;
-import io.undertow.server.handlers.proxy.ProxyCallback;
-import io.undertow.server.handlers.proxy.ProxyConnection;
-import io.undertow.server.handlers.proxy.ProxyHandler;
 import io.undertow.servlet.handlers.ServletRequestContext;
 import io.undertow.util.HeaderValues;
 
@@ -72,8 +69,9 @@ public class ProxyMappingManager {
 			}
 		};
 		proxyClient.addHost(target);
-		pathHandler.addPrefixPath(path, new ProxyHandler(proxyClient, ResponseCodeHandler.HANDLE_404));
-		
+		//pathHandler.addPrefixPath(path, new ProxyHandler(proxyClient, ResponseCodeHandler.HANDLE_404));
+		pathHandler.addPrefixPath(path, new ProxyHandler(proxyClient, -1, ResponseCodeHandler.HANDLE_404, true, false));
+
 		HttpServerExchange exchange = ServletRequestContext.current().getExchange();
 		mappingOwnerInfo.put(path, MappingOwnerInfo.create(exchange));
 	}
