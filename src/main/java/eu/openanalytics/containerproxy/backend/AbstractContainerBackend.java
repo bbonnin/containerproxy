@@ -26,7 +26,12 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,9 +41,11 @@ import javax.inject.Inject;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
 
 import eu.openanalytics.containerproxy.ContainerProxyException;
+import eu.openanalytics.containerproxy.auth.IAuthenticationBackend;
 import eu.openanalytics.containerproxy.backend.strategy.IProxyTargetMappingStrategy;
 import eu.openanalytics.containerproxy.backend.strategy.IProxyTestStrategy;
 import eu.openanalytics.containerproxy.model.runtime.Container;
@@ -46,6 +53,8 @@ import eu.openanalytics.containerproxy.model.runtime.Proxy;
 import eu.openanalytics.containerproxy.model.runtime.ProxyStatus;
 import eu.openanalytics.containerproxy.model.spec.ContainerSpec;
 import eu.openanalytics.containerproxy.service.UserService;
+import eu.openanalytics.containerproxy.spec.expression.ExpressionAwareContainerSpec;
+import eu.openanalytics.containerproxy.spec.expression.SpecExpressionResolver;
 
 public abstract class AbstractContainerBackend implements IContainerBackend {
 
@@ -76,6 +85,14 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
 	@Inject
 	protected Environment environment;
 	
+	@Inject
+	protected SpecExpressionResolver expressionResolver;
+	
+	@Inject
+	@Lazy
+	// Note: lazy needed to work around early initialization conflict 
+	protected IAuthenticationBackend authBackend;
+	
 	@Override
 	public void initialize() throws ContainerProxyException {
 		// If this application runs as a container itself, things like port publishing can be omitted.
@@ -86,7 +103,7 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
 	public void startProxy(Proxy proxy) throws ContainerProxyException {
 		proxy.setId(UUID.randomUUID().toString());
 		proxy.setStatus(ProxyStatus.Starting);
-
+		
 		try {
 			doStartProxy(proxy);
 		} catch (Throwable t) {
@@ -105,22 +122,24 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
 	
 	protected void doStartProxy(Proxy proxy) throws Exception {
 		for (ContainerSpec spec: proxy.getSpec().getContainerSpecs()) {
+			ExpressionAwareContainerSpec eSpec = new ExpressionAwareContainerSpec(spec, proxy, expressionResolver);
+
+			//Container c = startContainer(eSpec, proxy);
+			//c.setSpec(spec);
+			//proxy.getContainers().add(c);
 
 			Container container = null;
-
 			if (spec.isProxyManaged()) {
-				container = startContainer(spec, proxy);
+				container = startContainer(eSpec, proxy);
 			}
 			else {
 				container = new Container();
 				container.setSpec(spec);
 				container.setId(UUID.randomUUID().toString());
-
 				String mapping = mappingStrategy.createMapping("default", container, proxy);
 				URI target = new URI(spec.getAppUrl());
 				proxy.getTargets().put(mapping, target);
 			}
-
 			proxy.getContainers().add(container);
 		}
 	}
@@ -198,6 +217,9 @@ public abstract class AbstractContainerBackend implements IContainerBackend {
 				env.add(String.format("%s=%s", entry.getKey(), entry.getValue()));
 			}
 		}
+		
+		// Allow the authentication backend to add values to the environment, if needed.
+		if (authBackend != null) authBackend.customizeContainerEnv(env);
 		
 		return env;
 	}
